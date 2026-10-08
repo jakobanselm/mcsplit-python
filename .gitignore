@@ -1,0 +1,39 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# Testing & type checking caches
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# IDE & OS metadata
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Benchmark data & raw graph datasets (large files)
+vflib_dataset/
+*.bin
+uspto_50k.csv
+
+# Output logs & benchmark dumps
+*.log
+benchmark_results/
