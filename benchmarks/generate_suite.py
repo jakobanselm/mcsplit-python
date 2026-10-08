@@ -1,6 +1,7 @@
+import json
 from pathlib import Path
 import random
-from typing import Union
+from typing import Any, Dict, List, Tuple, Union
 import networkx as nx
 
 from mcsplit.graph_io.vflib_loader import VFLibBinaryGraphLoader
@@ -20,17 +21,14 @@ def _generate_family_core(
         return nx.erdos_renyi_graph(n=target_nodes, p=density, seed=rnd.randint(0, 10000))
 
     if family == "barabasi_albert":
-        # Guard: Barabasi-Albert requires 1 <= m < n
         m_edges = max(1, min(target_nodes - 1, 2))
         return nx.barabasi_albert_graph(n=target_nodes, m=m_edges, seed=rnd.randint(0, 10000))
 
     if family == "bounded_valence":
         degree = min(3, target_nodes - 1)
-        # Guard: Handshaking Lemma requires (n * d) to be even for regular graphs
+        # Handshaking lemma guard: (n * d) must be even
         if (target_nodes * degree) % 2 != 0:
             degree = degree - 1 if degree > 1 else 2
-
-        # Guard: Regular graph degree cannot exceed n - 1
         degree = min(degree, max(0, target_nodes - 1))
         return nx.random_regular_graph(d=degree, n=target_nodes, seed=rnd.randint(0, 10000))
 
@@ -46,35 +44,35 @@ def _generate_family_core(
 def generate_benchmark_suite(
     target_dir: Union[str, Path] = "./vflib_dataset",
     num_pairs_per_family: int = 10,
-    seed: int = 42,
+    seed: int = 420,
 ) -> Path:
     """
-    Generates a diverse set of synthetic VFLib .bin graph pairs covering
-    Erdos-Renyi, Bounded Valence, 2D Mesh, and Barabasi-Albert topologies.
+    Generates synthetic graph pairs in VFLib binary format along with
+    a ground-truth JSON metadata file containing the planted isomorphism.
     """
     out_path = Path(target_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
     families = ["er_random", "bounded_valence", "barabasi_albert", "grid_mesh"]
-    print(f"[INFO] Generating {num_pairs_per_family * len(families)} pairs in '{out_path}'...")
+    print(f"[INFO] Generating {num_pairs_per_family * len(families)} pairs with ground-truth in '{out_path}'...")
 
     rnd = random.Random(seed)
 
     for fam in families:
         for idx in range(num_pairs_per_family):
-            order = rnd.randint(16, 26)
+            order = rnd.randint(12, 22)
             overlap_ratio = rnd.uniform(0.25, 0.90)
             desired_common = max(4, int(order * overlap_ratio))
 
-            # 1. Build common induced subgraph core
+            # 1. Build common core
             core = _generate_family_core(fam, desired_common, rnd)
             actual_common = core.number_of_nodes()
 
-            # Guard: Adjust order if core dimensions expanded beyond initial target
+            # Guard: Adjust order if core dimensions exceeded target
             if actual_common >= order:
                 order = actual_common + 2
 
-            # 2. Build G and H with common core
+            # 2. Build G and H with the identical core vertices [0 .. actual_common - 1]
             G = nx.Graph()
             G.add_nodes_from(range(order))
             G.add_edges_from(core.edges())
@@ -97,17 +95,38 @@ def generate_benchmark_suite(
                 map_h = {i: i + actual_common for i in rem_h.nodes()}
                 H.add_edges_from(nx.relabel_nodes(rem_h, map_h).edges())
 
-            # 4. Save into canonical VFLib binary format
+            # 4. Canonical file naming
             actual_overlap = actual_common / order
             pair_name = f"{fam}_n{order}_ov{int(actual_overlap * 100):02d}_{idx:02d}"
 
+            # Save binary graphs
             VFLibBinaryGraphLoader.dump(G, out_path / f"{pair_name}_A.bin")
             VFLibBinaryGraphLoader.dump(H, out_path / f"{pair_name}_B.bin")
 
-    file_count = len(list(out_path.glob("*.bin")))
-    print(f"[SUCCESS] Generation complete: {file_count} binary files ready in '{out_path}'.")
+            # 5. Save Ground Truth Metadata
+            # The planted node mapping is identity on [0 .. actual_common - 1]
+            planted_node_mapping = {str(v): v for v in range(actual_common)}
+            planted_edges = [list(e) for e in core.edges()]
+
+            meta_data: Dict[str, Any] = {
+                "pair_id": pair_name,
+                "family": fam,
+                "order_g": order,
+                "order_h": order,
+                "planted_mcis_size": actual_common,
+                "planted_mces_size": core.number_of_edges(),
+                "core_is_connected": nx.is_connected(core),
+                "planted_node_mapping": planted_node_mapping,
+                "planted_edges": planted_edges,
+            }
+
+            with open(out_path / f"{pair_name}_meta.json", "w", encoding="utf-8") as f_meta:
+                json.dump(meta_data, f_meta, indent=2)
+
+    total_meta = len(list(out_path.glob("*_meta.json")))
+    print(f"[SUCCESS] Generation complete: {total_meta} benchmark pairs + ground-truth files ready.")
     return out_path
 
 
 if __name__ == "__main__":
-    generate_benchmark_suite(target_dir="./vflib_dataset", num_pairs_per_family=100)
+    generate_benchmark_suite(target_dir="./vflib_dataset", num_pairs_per_family=10)
