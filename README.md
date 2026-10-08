@@ -1,4 +1,4 @@
-# McSplit: Exact Maximum Common Subgraph Algorithms
+# McSplit: Exact Maximum Common Induced Subgraph Algorithms
 
 A high-performance Python implementation of the **McSplit** algorithm family for exact Maximum Common Subgraph problems, based on the PhD thesis of James Trimble (University of Glasgow, 2023).
 
