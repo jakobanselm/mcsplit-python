@@ -2,7 +2,7 @@
 
 A high-performance Python implementation of the **McSplit** algorithm family for exact Maximum Common Subgraph problems, based on the PhD thesis of James Trimble (University of Glasgow, 2023).
 
-The library supports Maximum Common Induced Subgraphs (**MCIS**) via Branch-and-Bound and Downward Decision Sequences, as well as Maximum Common Edge Subgraphs (**MCES**) via line graph transformations with exact Whitney isomorphism resolution[cite: 23, 48, 162].
+The library supports Maximum Common Induced Subgraphs (**MCIS**) via Branch-and-Bound and Downward Decision Sequences, as well as Maximum Common Edge Subgraphs (**MCES**) via line graph transformations with exact Whitney isomorphism resolution.
 
 ---
 
