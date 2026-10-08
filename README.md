@@ -9,10 +9,27 @@ The library supports Maximum Common Induced Subgraphs (**MCIS**) via Branch-and-
 ## Key Features
 
 - **`MCSplitMode.BASE`**: Classic Branch-and-Bound solver for Maximum Common Induced Subgraphs (MCIS) using bitset domain stores and dynamic fail-first class partitioning (Trimble Alg. 1).
-- **`MCSplitMode.DOWN`**: Sequence-of-decision-problems solver (Trimble Alg. 3). Yields significant speedups when the common subgraph order is high ($\ge 70\%$ node overlap).
+- **`MCSplitMode.DOWN`**: Sequence-of-decision-problems solver (Trimble Alg. 3). Yields significant speedups when the common subgraph order is high ($\ge 70\,\%$ node overlap).
 - **`MCSplitMode.LINE_GRAPH`**: Exact Maximum Common Edge Subgraph (MCES) solver. Resolves the Whitney isomorphism ambiguity ($K_3 \cong K_{1,3}$) on-the-fly via dual vertex-incidence tracking.
-- **Connected Subgraphs (`connected=True`)**: Guarantees that extracted subgraphs induce a single connected component (MCCIS / connected MCES).
 - **VFLib Binary I/O**: Native parser and serializer for the canonical 16-bit little-endian binary graph format used in the VFLib and Santo et al. benchmark datasets.
+
+---
+
+## Parameter Guide
+
+### `connected: bool` (default: `False`)
+Controls whether the common subgraph must form a single connected component.
+- **Recommended for Chemistry:** When matching molecular structures (e.g., SMILES, SDF), set `connected=True`. Unconnected matchings produce fragmented sets of disjoint atoms that do not represent valid chemical scaffolds or pharmacophores.
+- **General Graphs:** Set `connected=False` for arbitrary network topologies or when disconnected subgraphs are permitted.
+
+### `find_all: bool` (default: `False`)
+Determines solution enumeration behavior:
+- `False`: Terminates immediately once the first optimal maximum mapping is proven.
+- `True`: Exhaustively searches the search tree to return **all** symmetry-equivalent maximum common subgraphs.
+
+### Label Attributes
+- `node_label_attr` (default: `"atomic_num"`): NetworkX node attribute key used for vertex label compatibility.
+- `edge_label_attr` (default: `"order"`): NetworkX edge attribute key used for edge type compatibility.
 
 ---
 
@@ -75,8 +92,8 @@ print(f"Dual Atom Mapping: {result_mces.solutions[0]['atom_map']}")
 
 | Mode | Target Problem | Optimization Strategy | Recommended Use Case |
 | :--- | :--- | :--- | :--- |
-| **`BASE`** | MCIS ($\vert{}V_{\text{sub}}\vert{}$) | Branch-and-Bound with upper bounding | General instances, low-to-moderate similarity ($<70\%$) |
-| **`DOWN`** | MCIS ($\vert{}V_{\text{sub}}\vert{}$) | Sequence of decision problems ($t = n, n-1, \dots$) | High graph similarity ($\ge 70\%$ node overlap) |
+| **`BASE`** | MCIS ($\vert{}V_{\text{sub}}\vert{}$) | Branch-and-Bound with upper bounding | General instances, low-to-moderate similarity ($<70\,\%$) |
+| **`DOWN`** | MCIS ($\vert{}V_{\text{sub}}\vert{}$) | Sequence of decision problems ($t = n, n-1, \dots$) | High graph similarity ($\ge 70\,\%$ node overlap) |
 | **`LINE_GRAPH`** | MCES ($\vert{}E_{\text{sub}}\vert{}$) | Line graph MCIS with dual vertex consistency | Edge-centric matching, chemical reactions, bond mappings |
 
 ---
