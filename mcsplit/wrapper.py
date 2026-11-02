@@ -6,15 +6,19 @@ import networkx as nx
 
 # Import the existing solver implementations
 from mcsplit.solver.MCSplitBase import McSplitBase
+from mcsplit.solver.MCSplitBaseSuboptimals import McSplitBaseSuboptimals
 from mcsplit.solver.McSplitDown import McSplitDown
 from mcsplit.solver.McSplitLineGraph import McSplitLineGraphSolver
+from mcsplit.solver.McSplitLineGraphSuboptimals import McSplitLineGraphSuboptimals
 
 
 class MCSplitMode(str, Enum):
     """Execution modes for maximum common subgraph search."""
-    BASE = "base"              # Branch-and-bound for MCIS
-    DOWN = "down"              # Sequence-of-decision-problems for high similarity
-    LINE_GRAPH = "line_graph"  # MCES using line graph with Whitney resolution
+    BASE = "base"                 # Branch-and-bound for MCIS
+    SUBOPT = "subopt"             # Branch-and-bound for MCIS with suboptimal candidates
+    DOWN = "down"                 # Sequence-of-decision-problems for high similarity
+    LINE_GRAPH = "line_graph"     # MCES using line graph with Whitney resolution
+    LINE_SUBOPT = "line_subopt"  # MCES using line graph with Whitney resolution with suboptimal candidates
 
 
 @dataclass(frozen=True)
@@ -92,8 +96,34 @@ class MCSplitWrapper:
                 metadata={"metric": "edges"},
             )
 
+        if mode_enum == MCSplitMode.LINE_SUBOPT:
+            result_size, solutions = self._run_line_subopt(G, H, find_all)
+            elapsed = time.perf_counter() - start_time
+            return MCSplitResult(
+                size=result_size,
+                solutions=solutions,
+                runtime_seconds=elapsed,
+                mode_used=mode_enum,
+                graph_g_nodes=G.number_of_nodes(),
+                graph_h_nodes=H.number_of_nodes(),
+                metadata={"metric": "edges"},
+            )
+
         if mode_enum == MCSplitMode.DOWN:
             result_size, solutions = self._run_down(G, H, find_all)
+            elapsed = time.perf_counter() - start_time
+            return MCSplitResult(
+                size=result_size,
+                solutions=solutions,
+                runtime_seconds=elapsed,
+                mode_used=mode_enum,
+                graph_g_nodes=G.number_of_nodes(),
+                graph_h_nodes=H.number_of_nodes(),
+                metadata={"metric": "vertices"},
+            )
+            
+        if mode_enum == MCSplitMode.SUBOPT:
+            result_size, solutions = self._run_subopt(G, H, find_all)
             elapsed = time.perf_counter() - start_time
             return MCSplitResult(
                 size=result_size,
@@ -130,6 +160,19 @@ class MCSplitWrapper:
         )
         return solver.solve(find_all=find_all)
 
+    def _run_subopt(
+        self, G: nx.Graph, H: nx.Graph, find_all: bool
+    ) -> Tuple[int, List[Any]]:
+        solver = McSplitBaseSuboptimals(
+            G,
+            H,
+            node_label_attr=self.node_label_attr,
+            edge_label_attr=self.edge_label_attr,
+            connected=self.connected,
+            subtoptimal_threshold=1,
+        )
+        return solver.solve()
+
     def _run_down(
         self, G: nx.Graph, H: nx.Graph, find_all: bool
     ) -> Tuple[int, List[Any]]:
@@ -153,3 +196,16 @@ class MCSplitWrapper:
             connected=self.connected,
         )
         return solver.solve(find_all=find_all)
+        
+    def _run_line_subopt(
+        self, G: nx.Graph, H: nx.Graph, find_all: bool
+    ) -> Tuple[int, List[Any]]:
+        solver = McSplitLineGraphSuboptimals(
+            G,
+            H,
+            node_label_attr=self.node_label_attr,
+            edge_label_attr=self.edge_label_attr,
+            connected=self.connected,
+        )
+        return solver.solve()     
+        
